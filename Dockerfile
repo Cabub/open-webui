@@ -36,7 +36,8 @@ WORKDIR /app
 RUN apk add --no-cache git
 
 COPY package.json package-lock.json ./
-RUN npm ci --force
+# dev dependencies are test/lint tooling only; the build needs none of them
+RUN npm ci --omit=dev
 
 COPY . .
 ENV APP_BUILD_HASH=${BUILD_HASH}
