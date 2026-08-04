@@ -1705,12 +1705,16 @@ class RerankCompressor(BaseDocumentCompressor):
         if reranking:
             scores = await asyncio.to_thread(self.reranking_function, query, documents)
         else:
-            from sentence_transformers import util as st_util
+            import numpy as np
 
             query_embedding = await self.embedding_function(query, RAG_EMBEDDING_QUERY_PREFIX)
             doc_texts = [doc.page_content for doc in documents]
             document_embedding = await self.embedding_function(doc_texts, RAG_EMBEDDING_CONTENT_PREFIX)
-            scores = st_util.cos_sim(query_embedding, document_embedding)[0]
+            q = np.asarray(query_embedding, dtype=np.float32).reshape(-1)
+            d = np.asarray(document_embedding, dtype=np.float32)
+            q_norm = np.linalg.norm(q)
+            d_norm = np.linalg.norm(d, axis=1)
+            scores = (d @ q) / np.where(d_norm * q_norm == 0, 1.0, d_norm * q_norm)
 
         if scores is not None:
             docs_with_scores = list(
