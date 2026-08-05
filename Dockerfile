@@ -32,12 +32,11 @@ ARG BUILD_HASH
 
 WORKDIR /app
 
-# to store git revision in build
-RUN apk add --no-cache git
-
 COPY package.json package-lock.json ./
 # dev dependencies are test/lint tooling only; the build needs none of them
-RUN npm ci --omit=dev
+# drop the npm download cache in the same layer it's created in
+RUN npm ci --omit=dev; \
+    rm -rf /root/.npm
 
 COPY . .
 ENV APP_BUILD_HASH=${BUILD_HASH}
@@ -110,19 +109,18 @@ ENV HF_HOME="/app/backend/data/cache/embedding/models"
 WORKDIR /app/backend
 
 ENV HOME=/root
-# Create user and group if not root
+# Create user and group if not root, and make sure the user has access to
+# the app and root directory (one layer; vfs-driver builds store a full
+# filesystem copy per layer, so layer count matters)
 RUN if [ $UID -ne 0 ]; then \
     if [ $GID -ne 0 ]; then \
     addgroup --gid $GID app; \
     fi; \
     adduser --uid $UID --gid $GID --home $HOME --disabled-password --no-create-home app; \
-    fi
-
-RUN mkdir -p $HOME/.cache/chroma
-RUN echo -n 00000000-0000-0000-0000-000000000000 > $HOME/.cache/chroma/telemetry_user_id
-
-# Make sure the user has access to the app and root directory
-RUN chown -R $UID:$GID /app $HOME
+    fi; \
+    mkdir -p $HOME/.cache/chroma; \
+    echo -n 00000000-0000-0000-0000-000000000000 > $HOME/.cache/chroma/telemetry_user_id; \
+    chown -R $UID:$GID /app $HOME
 
 # Install common system dependencies
 RUN apt-get update && \
