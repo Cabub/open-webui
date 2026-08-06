@@ -27,8 +27,10 @@ ARG GID=0
 FROM --platform=$BUILDPLATFORM node:22-alpine3.20 AS build
 ARG BUILD_HASH
 
-# Set Node.js options (heap limit Allocation failed - JavaScript heap out of memory)
-# ENV NODE_OPTIONS="--max-old-space-size=4096"
+# V8's default heap cap (~4GB regardless of machine RAM) is too small for the
+# vite/rollup build; raise it further with --build-arg NODE_OPTIONS="--max-old-space-size=8192"
+ARG NODE_OPTIONS="--max-old-space-size=4096"
+ENV NODE_OPTIONS=${NODE_OPTIONS}
 
 WORKDIR /app
 
