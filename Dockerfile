@@ -24,6 +24,9 @@ ARG UID=0
 ARG GID=0
 
 ######## WebUI frontend ########
+# bun is used only as the installer (much faster than npm ci); vite still builds on node
+FROM --platform=$BUILDPLATFORM oven/bun:1-alpine AS bun
+
 FROM --platform=$BUILDPLATFORM node:22-alpine3.20 AS build
 ARG BUILD_HASH
 
@@ -31,14 +34,22 @@ ARG BUILD_HASH
 # vite/rollup build; raise it further with --build-arg NODE_OPTIONS="--max-old-space-size=8192"
 ARG NODE_OPTIONS="--max-old-space-size=4096"
 ENV NODE_OPTIONS=${NODE_OPTIONS}
+# sourcemaps roughly double the build's peak memory and ship .map files into the
+# image; flip with --build-arg BUILD_SOURCEMAP=true if you need them
+ARG BUILD_SOURCEMAP=false
+ENV BUILD_SOURCEMAP=${BUILD_SOURCEMAP}
+
+COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 
 WORKDIR /app
 
 COPY package.json package-lock.json ./
 # dev dependencies are test/lint tooling only; the build needs none of them
-# drop the npm download cache in the same layer it's created in
-RUN npm ci --omit=dev; \
-    rm -rf /root/.npm
+# bun migrates the versions pinned in package-lock.json; drop its cache in the same layer
+# (set -e so a failed install fails the layer instead of being masked by the rm)
+RUN set -e; \
+    bun install --production; \
+    rm -rf /root/.bun/install/cache
 
 COPY . .
 ENV APP_BUILD_HASH=${BUILD_HASH}

@@ -21,7 +21,8 @@ export default defineConfig({
 		APP_BUILD_HASH: JSON.stringify(process.env.APP_BUILD_HASH || 'dev-build')
 	},
 	build: {
-		sourcemap: true
+		// sourcemaps roughly double rollup's peak memory; BUILD_SOURCEMAP=false disables them
+		sourcemap: process.env.BUILD_SOURCEMAP !== 'false'
 	},
 	worker: {
 		format: 'es'
