@@ -11,7 +11,7 @@ sentencepiece==0.2.1
 faster-whisper==1.2.1
 av==14.0.1 # Caution: Set due to FATAL FIPS SELFTEST FAILURE, see discussion https://github.com/open-webui/open-webui/discussions/15720
 colbert-ai==0.2.22
-rapidocr-onnxruntime==1.4.4
+rapidocr==3.9.2
 
 ## Document processing extras (loaders/main.py has fallbacks when absent)
 unstructured==0.22.31
