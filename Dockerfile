@@ -135,12 +135,17 @@ RUN if [ $UID -ne 0 ]; then \
     echo -n 00000000-0000-0000-0000-000000000000 > $HOME/.cache/chroma/telemetry_user_id; \
     chown -R $UID:$GID /app $HOME
 
-# Install common system dependencies
+# Install common RUNTIME system dependencies only.
+# - The build toolchain (build-essential/gcc/python3-dev) is installed and purged
+#   inside the dependency-install layer below, so compilers never ship in the
+#   runtime image (build-essential in a runtime image is a defect, not just size).
+# - pandoc (pypandoc) and ffmpeg (pydub) are RUNTIME deps even in the slim build,
+#   so they stay.
+# - libmariadb-dev dropped: the mariadb connector is commented out in both
+#   requirements.txt and requirements-slim.txt, so nothing links against it.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    git build-essential pandoc gcc netcat-openbsd curl jq ca-certificates \
-    libmariadb-dev \
-    python3-dev \
+    git pandoc netcat-openbsd curl jq ca-certificates \
     ffmpeg libsm6 libxext6 zstd \
     && rm -rf /var/lib/apt/lists/*
 
@@ -151,6 +156,10 @@ COPY --chown=$UID:$GID ./backend/requirements.txt ./backend/requirements-slim.tx
 ENV UV_LINK_MODE=copy
 
 RUN set -e; \
+    # build toolchain lives only in this layer — installed here, purged at the end,
+    # so the wheels that need compiling can build but the compilers don't ship
+    apt-get update; \
+    apt-get install -y --no-install-recommends build-essential gcc python3-dev; \
     pip3 install --no-cache-dir uv; \
     if [ "$USE_CUDA" = "true" ]; then \
     # If you use CUDA the whisper and embedding model will be downloaded on first use
@@ -174,6 +183,9 @@ RUN set -e; \
     python -c "import os; import tiktoken; tiktoken.get_encoding(os.environ['TIKTOKEN_ENCODING_NAME'])"; \
     python -c "import nltk; nltk.download('punkt_tab')"; \
     fi; \
+    # purge the build toolchain in the SAME layer it was installed, so it adds no
+    # weight to the runtime image (removing it in a later layer would not shrink it)
+    apt-get purge -y --auto-remove build-essential gcc python3-dev; \
     mkdir -p /app/backend/data; chown -R $UID:$GID /app/backend/data/; \
     rm -rf /var/lib/apt/lists/*;
 
