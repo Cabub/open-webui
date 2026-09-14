@@ -631,7 +631,12 @@ class KnowledgeTable:
                     total=total,
                 )
         except Exception as e:
-            print(e)
+            # This path fabricates an empty-but-internally-consistent collection
+            # (items=[] with total=0), which a caller cannot distinguish from a
+            # genuinely empty one — so the log line is the only evidence it ran.
+            # It was print(), which bypasses the module logger every other
+            # handler here uses and loses the traceback.
+            log.exception(e)
             return KnowledgeFileListResponse(items=[], total=0)
 
     async def get_files_by_id(self, knowledge_id: str, db: Optional[AsyncSession] = None) -> list[FileModel]:
