@@ -573,7 +573,12 @@
 					class="p-1 px-3 text-xs flex rounded-sm transition shrink-0 outline-hidden"
 					type="button"
 					on:click={() => {
-						params.max_tokens = (params?.max_tokens ?? null) === null ? 128 : null;
+						// Seed with Ollama's own default (-1, generate until EOS/context) like every
+						// other param here, so flipping to Custom is a no-op until you pick a value.
+						// This was 128 — Ollama's num_predict default years ago — which silently
+						// capped every reply in the chat, and on a thinking model spent the whole
+						// budget inside <think>, rendering a blank answer.
+						params.max_tokens = (params?.max_tokens ?? null) === null ? -1 : null;
 					}}
 				>
 					{#if (params?.max_tokens ?? null) === null}
