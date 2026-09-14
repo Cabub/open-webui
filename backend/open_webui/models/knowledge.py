@@ -364,7 +364,11 @@ class KnowledgeTable:
 
                 return KnowledgeListResponse(items=knowledge_bases, total=total)
         except Exception as e:
-            print(e)
+            # Same fabricate-an-empty-response shape as search_files_by_id, and
+            # this is the listing callers reach for as a second opinion when the
+            # file listing looks empty — so losing the error here costs the
+            # corroboration too.
+            log.exception(e)
             return KnowledgeListResponse(items=[], total=0)
 
     async def search_knowledge_files(
@@ -464,7 +468,7 @@ class KnowledgeTable:
                 return KnowledgeFileListResponse(items=items, total=total)
 
         except Exception as e:
-            print('search_knowledge_files error:', e)
+            log.exception(e)
             return KnowledgeFileListResponse(items=[], total=0)
 
     async def check_access_by_user_id(
